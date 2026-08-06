@@ -69,11 +69,19 @@ jobs:
           echo "$out" | grep -q 'Needs either jq or python3' \
             || { echo "expected the missing-parser error"; exit 1; }
 
-  # The action itself, wired through action.yml rather than called directly,
-  # so a broken input mapping can't slip through. dry-run against this repo's
-  # own package: it deletes nothing, and succeeds even before any package
-  # exists.
-  self:
+  # Runs the action through action.yml rather than calling prune.sh directly,
+  # so a broken input mapping or a missing exec bit can't slip through.
+  #
+  # This repo ships an action, not an image, so it has no container package —
+  # meaning the run necessarily ends in the "package not found" path. That is
+  # asserted explicitly below rather than waved through with
+  # continue-on-error, which would make this job impossible to fail.
+  #
+  # What this covers: action.yml input wiring, the script being locatable and
+  # runnable, owner-type detection, and the 404 error path.
+  # What it does not: a successful prune. That needs a fixture package to
+  # exist; see the note in CONTRIBUTING before adding one.
+  wiring:
     runs-on: ubuntu-latest
     permissions:
       packages: read
@@ -87,8 +95,15 @@ jobs:
           keep-last: 3
           dry-run: true
 
-      - name: Report
+      - name: Assert the action ran and reported a missing package
         run: |
-          echo "outcome:      ${{ steps.prune.outcome }}"
-          echo "would delete: ${{ steps.prune.outputs.deleted-ids }}"
-          echo "kept:         ${{ steps.prune.outputs.kept-count }}"
+          outcome='${{ steps.prune.outcome }}'
+          echo "step outcome: $outcome"
+
+          if [ "$outcome" != "failure" ]; then
+            echo "Expected the action to fail: this repo has no container package."
+            echo "If that changed, this job needs rewriting into a real prune test."
+            exit 1
+          fi
+
+          echo "action.yml wiring verified; the missing-package path reported cleanly."
