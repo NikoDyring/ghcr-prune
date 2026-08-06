@@ -1,0 +1,92 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: ShellCheck
+        run: shellcheck prune.sh tests/*.sh
+
+      - name: shfmt (formatting)
+        run: |
+          curl -fsSL -o /tmp/shfmt \
+            https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64
+          chmod +x /tmp/shfmt
+          /tmp/shfmt --diff prune.sh tests/*.sh
+
+      - name: action.yml is valid YAML
+        run: python3 -c "import yaml; yaml.safe_load(open('action.yml'))"
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both JSON parsers are supported, so both get tested. GitHub-hosted
+        # runners have jq and python3; self-hosted often have neither, which
+        # is exactly why the fallback exists.
+        parser: [jq, python3]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Input validation
+        run: bash tests/validation.sh
+        env:
+          GHCR_PRUNE_JSON: ${{ matrix.parser }}
+
+      - name: End-to-end against a fake API
+        run: bash tests/fake-api.sh
+        env:
+          GHCR_PRUNE_JSON: ${{ matrix.parser }}
+
+  # Proves the promise in the README: with no parser present the action fails
+  # with a clear message instead of misbehaving.
+  no-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fails cleanly when neither jq nor python3 exists
+        run: |
+          set -o pipefail
+          out=$(GHCR_PRUNE_JSON=definitely-not-installed \
+            INPUT_TOKEN=x INPUT_OWNER=someone INPUT_PACKAGE=thing \
+            GITHUB_OUTPUT=/tmp/out \
+            bash prune.sh 2>&1) && rc=0 || rc=$?
+
+          echo "$out"
+          [ "$rc" -ne 0 ] || { echo "expected a non-zero exit"; exit 1; }
+          echo "$out" | grep -q 'Needs either jq or python3' \
+            || { echo "expected the missing-parser error"; exit 1; }
+
+  # The action itself, wired through action.yml rather than called directly,
+  # so a broken input mapping can't slip through. dry-run against this repo's
+  # own package: it deletes nothing, and succeeds even before any package
+  # exists.
+  self:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: prune
+        uses: ./
+        continue-on-error: true
+        with:
+          keep-last: 3
+          dry-run: true
+
+      - name: Report
+        run: |
+          echo "outcome:      ${{ steps.prune.outcome }}"
+          echo "would delete: ${{ steps.prune.outputs.deleted-ids }}"
+          echo "kept:         ${{ steps.prune.outputs.kept-count }}"

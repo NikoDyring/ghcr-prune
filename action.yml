@@ -1,0 +1,61 @@
+name: GHCR Prune
+description: Delete old GitHub Packages versions, keeping the newest N. Composite action — no Node runtime to deprecate.
+author: NikoDyring
+
+branding:
+  icon: trash-2
+  color: blue
+
+inputs:
+  package:
+    description: 'Package name. Defaults to the repository name.'
+    required: false
+    default: ''
+  owner:
+    description: 'User or organisation that owns the package. Defaults to the repository owner.'
+    required: false
+    default: ''
+  package-type:
+    description: 'Package type: container, npm, maven, rubygems or nuget.'
+    required: false
+    default: container
+  keep-last:
+    description: 'How many of the most recent versions to keep. Must be 1 or more.'
+    required: false
+    default: '3'
+  dry-run:
+    description: 'List what would be deleted without deleting anything.'
+    required: false
+    default: 'false'
+  token:
+    description: 'Token with `packages: write` on the package. Defaults to the workflow token.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  deleted-count:
+    description: Number of versions deleted (0 when dry-run).
+    value: ${{ steps.prune.outputs.deleted-count }}
+  deleted-ids:
+    description: Space-separated ids of the deleted versions (or of what would be deleted, when dry-run).
+    value: ${{ steps.prune.outputs.deleted-ids }}
+  kept-count:
+    description: Number of versions retained.
+    value: ${{ steps.prune.outputs.kept-count }}
+
+runs:
+  using: composite
+  steps:
+    - id: prune
+      shell: bash
+      # Invoked through bash rather than executed directly: the repo is
+      # authored on Windows, where git may not preserve the executable bit,
+      # and a non-executable prune.sh would fail at every consumer.
+      run: bash "$GITHUB_ACTION_PATH/prune.sh"
+      env:
+        INPUT_PACKAGE: ${{ inputs.package }}
+        INPUT_OWNER: ${{ inputs.owner }}
+        INPUT_PACKAGE_TYPE: ${{ inputs.package-type }}
+        INPUT_KEEP_LAST: ${{ inputs.keep-last }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        INPUT_TOKEN: ${{ inputs.token }}
