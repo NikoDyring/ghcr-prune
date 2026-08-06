@@ -20,7 +20,9 @@ jobs:
           curl -fsSL -o /tmp/shfmt \
             https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64
           chmod +x /tmp/shfmt
-          /tmp/shfmt --diff prune.sh tests/*.sh
+          # -i 2: this project indents with two spaces. shfmt defaults to
+          # tabs, which is a preference, not a correctness matter.
+          /tmp/shfmt -i 2 --diff prune.sh tests/*.sh
 
       - name: action.yml is valid YAML
         run: python3 -c "import yaml; yaml.safe_load(open('action.yml'))"
