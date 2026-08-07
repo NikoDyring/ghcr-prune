@@ -28,7 +28,7 @@ jobs:
         run: python3 -c "import yaml; yaml.safe_load(open('action.yml'))"
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +36,16 @@ jobs:
         # runners have jq and python3; self-hosted often have neither, which
         # is exactly why the fallback exists.
         parser: [jq, python3]
+        # Windows earns its place: on a Windows runner both jq and python
+        # write stdout in text mode, so parser output arrives CRLF-terminated
+        # and the stray carriage return rides along on the last field. That
+        # silently broke the container manifest walk and a Linux-only matrix
+        # could not see it. `shell: bash` here is Git Bash, which is what a
+        # self-hosted Windows runner gives the action too.
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
 
