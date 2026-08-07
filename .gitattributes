@@ -1,3 +1,5 @@
-# The action runs these on Linux runners; CRLF would break the shebang line.
+# CRLF would break the shebang line. Enforced on every platform, not just the
+# Linux runners: the CI matrix runs these under Git Bash on Windows too, and a
+# self-hosted Windows runner checks the action out the same way.
 *.sh text eol=lf
 *.yml text eol=lf
