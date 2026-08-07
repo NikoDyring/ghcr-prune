@@ -66,7 +66,7 @@ expect_fail 'negative keep-last is rejected' \
   INPUT_TOKEN=x INPUT_OWNER=someone INPUT_PACKAGE=thing INPUT_KEEP_LAST=-1
 
 expect_fail 'keep-last of zero is refused' \
-  'refusing to delete every version' \
+  'refusing to delete every deploy' \
   INPUT_TOKEN=x INPUT_OWNER=someone INPUT_PACKAGE=thing INPUT_KEEP_LAST=0
 
 expect_fail 'non-boolean dry-run is rejected' \

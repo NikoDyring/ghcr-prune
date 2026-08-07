@@ -1,5 +1,5 @@
 name: GHCR Prune
-description: Delete old GitHub Packages versions, keeping the newest N. Composite action — no Node runtime to deprecate.
+description: Delete old GitHub Packages versions, keeping the newest N deploys. Composite action — no Node runtime to deprecate.
 author: NikoDyring
 
 branding:
@@ -20,7 +20,7 @@ inputs:
     required: false
     default: container
   keep-last:
-    description: 'How many of the most recent versions to keep. Must be 1 or more.'
+    description: 'How many of the most recent deploys to keep. Must be 1 or more. For a container package a deploy is a tagged version plus every manifest it references, so a multi-platform image counts as one.'
     required: false
     default: '3'
   dry-run:
