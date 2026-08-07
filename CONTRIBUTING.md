@@ -31,7 +31,9 @@ shfmt -i 2 --diff prune.sh tests/*.sh
 
 ## Testing strategy, and its one gap
 
-`tests/fake-api.sh` runs the real script against a local static server standing in for the GitHub API. That covers pagination, JSON parsing, newest-first ordering and version selection — deliberately in dry-run, so the suite never issues a `DELETE`.
+`tests/fake-api.sh` runs the real script against a local server standing in for both the GitHub API and the container registry. That covers pagination, JSON parsing, newest-first ordering, deploy grouping and version selection — deliberately in dry-run, so the suite never issues a `DELETE`.
+
+The main fixture is a multi-platform package on purpose: three deploys, each an index manifest plus per-platform children, plus one orphaned untagged manifest. That is the case where "keep the newest N versions" and "keep the newest N deploys" disagree, and where getting it wrong deletes a child manifest and leaves a kept image unpullable. The suite also covers a package where every version is tagged (the registry must never be consulted), a package with no tags at all (nothing may be deleted), and an unreachable registry (fail closed: keep every untagged version, prune older deploys anyway).
 
 The `wiring` CI job runs the action through `action.yml` to catch broken input mapping. Because this repo ships an action rather than an image, it has no container package, so that job can only reach the "package not found" path. It asserts that explicitly rather than using `continue-on-error` to wave a failure through.
 
